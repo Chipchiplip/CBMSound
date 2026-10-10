@@ -28,7 +28,8 @@ export function PlaybackTimeline({ currentTime, duration, trackId, disabled = fa
   const unavailable = disabled || !trackId || total === 0
   const clamp = (seconds: number) => Math.min(total, Math.max(0, Number.isFinite(seconds) ? seconds : 0))
   const previewing = !unavailable && draft !== null && draft.trackId === trackId
-  const position = clamp(previewing ? draft.seconds : currentTime)
+  const position = previewing ? clamp(draft.seconds) : Math.max(0, Number.isFinite(currentTime) ? currentTime : 0)
+  const rangePosition = clamp(position)
 
   const cancel = () => {
     gesture.current = null
@@ -56,14 +57,14 @@ export function PlaybackTimeline({ currentTime, duration, trackId, disabled = fa
       className="timeline-range"
       aria-label="Vị trí phát"
       aria-describedby={instructionId}
-      aria-valuetext={`${formatPosition(position)} trên ${formatPosition(total)}`}
+      aria-valuetext={total ? `${formatPosition(position)} trên ${formatPosition(total)}` : `${formatPosition(position)}, chưa xác định thời lượng`}
       type="range"
       min={0}
       max={total || 1}
       step="0.25"
-      value={position}
+      value={rangePosition}
       disabled={unavailable}
-      style={{ '--timeline-progress': `${total ? position / total * 100 : 0}%` } as CSSProperties}
+      style={{ '--timeline-progress': `${total ? rangePosition / total * 100 : 0}%` } as CSSProperties}
       onPointerDown={(event) => {
         if (unavailable || (event.pointerType === 'mouse' && event.button !== 0)) return
         gesture.current = { trackId, kind: 'pointer' }
@@ -103,7 +104,7 @@ export function PlaybackTimeline({ currentTime, duration, trackId, disabled = fa
         }
       }}
     />
-    <time className="timeline-duration" aria-label="Thời lượng bài hát">{formatPosition(total)}</time>
+    <time className="timeline-duration" aria-label="Thời lượng bài hát">{total ? formatPosition(total) : '—:—'}</time>
     <span id={instructionId} className="sr-only">Kéo rồi thả để tua. Dùng phím mũi tên để chọn vị trí; nhấn Escape để hủy.</span>
   </div>
 }

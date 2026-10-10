@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DriveTrack } from '../types'
+import { TRACK_METADATA_VERSION, type DriveTrack } from '../types'
 
 const mocks = vi.hoisted(() => ({
   tracks: [] as DriveTrack[], generation: 0, token: { accessToken: 'test', expiresAt: Date.now() + 10000 } as { accessToken: string; expiresAt: number } | undefined,
@@ -293,6 +293,66 @@ describe('last playback on this device', () => {
 afterEach(() => { store.getState().stop(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 describe('player lifecycle and queue', () => {
+  it('keeps an 80-minute stream duration when delayed tags report the old 1:44 prefix duration', async () => {
+    let finish!: (tags: { duration: number; artist: string }) => void
+    mocks.metadata.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
+    mocks.tracks[0] = { ...mocks.tracks[0], duration: 104, metadataChecked: true }
+    TestAudio.current.duration = 4800
+    activateLibrary()
+    await store.getState().play(mocks.tracks[0], mocks.tracks)
+    expect(store.getState().duration).toBe(4800)
+    finish({ duration: 104, artist: 'Long recording' })
+    await vi.waitFor(() => expect(store.getState().currentTrack?.artist).toBe('Long recording'))
+    expect(store.getState().duration).toBe(4800)
+    expect(mocks.tracks[0]).toMatchObject({ duration: 4800, metadataVersion: TRACK_METADATA_VERSION })
+    store.getState().seek(2400)
+    expect(TestAudio.current.currentTime).toBe(2400)
+    expect(store.getState().currentTime).toBe(2400)
+    store.getState().pause()
+    expect(await savedPlayback()).toMatchObject({ duration: 4800, currentTime: 2400 })
+  })
+
+  it('accepts a later durationchange and can play with initially unknown duration', async () => {
+    TestAudio.current.duration = Infinity
+    await store.getState().play(mocks.tracks[0], mocks.tracks)
+    TestAudio.current.currentTime = 130
+    TestAudio.current.dispatchEvent(new Event('timeupdate'))
+    expect(store.getState()).toMatchObject({ duration: 0, currentTime: 130, isPlaying: true })
+    TestAudio.current.duration = 4800
+    TestAudio.current.dispatchEvent(new Event('durationchange'))
+    expect(store.getState()).toMatchObject({ duration: 4800, currentTime: 130 })
+    expect(mocks.tracks[0]).toMatchObject({ duration: 4800, metadataVersion: TRACK_METADATA_VERSION })
+    TestAudio.current.duration = 4820
+    TestAudio.current.dispatchEvent(new Event('durationchange'))
+    expect(store.getState().duration).toBe(4820)
+    store.getState().seek(2400)
+    expect(TestAudio.current.currentTime).toBe(2400)
+    store.getState().stop()
+    TestAudio.current.dispatchEvent(new Event('durationchange'))
+    expect(store.getState().duration).toBe(0)
+  })
+
+  it('preserves a saved position past the legacy duration until the full source loads again', async () => {
+    activateLibrary()
+    TestAudio.current.duration = 4800
+    await store.getState().play(mocks.tracks[0], mocks.tracks)
+    store.getState().seek(2400)
+    store.getState().pause()
+    const memory = await import('../services/playbackMemory')
+    const key = memory.playbackMemoryKey('account-a', 'root-a')
+    memory.writePlaybackMemory(key, { ...(await savedPlayback())!, duration: 104 })
+    mocks.tracks[0] = { ...mocks.tracks[0], duration: 104, metadataChecked: true, metadataVersion: undefined }
+    vi.resetModules()
+    mocks.libraryListeners = []
+    store = (await import('./player')).usePlayerStore
+    expect(store.getState()).toMatchObject({ duration: 0, currentTime: 2400, isPlaying: false })
+    TestAudio.current.duration = 4800
+    store.getState().toggle()
+    await vi.waitFor(() => expect(store.getState().isPlaying).toBe(true))
+    expect(store.getState().duration).toBe(4800)
+    expect(TestAudio.current.currentTime).toBe(2400)
+  })
+
   it('skips unavailable tracks going forward and back', async () => {
     mocks.tracks[1].unavailable = true
     await store.getState().play(mocks.tracks[0], mocks.tracks)
@@ -373,6 +433,7 @@ describe('player lifecycle and queue', () => {
     let finish!: (tags: { artist: string }) => void
     mocks.metadata.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
     await store.getState().play(mocks.tracks[0], mocks.tracks)
+    mocks.addTrack.mockClear()
     await store.getState().play(mocks.tracks[1])
     finish({ artist: 'Artist A' })
     await Promise.resolve()
@@ -422,6 +483,7 @@ describe('player lifecycle and queue', () => {
     let finish!: (tags: { artist: string }) => void
     mocks.metadata.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))
     await store.getState().play(mocks.tracks[0], mocks.tracks)
+    mocks.addTrack.mockClear()
     mocks.generation++
     for (const listener of mocks.resetListeners) listener()
     finish({ artist: 'Old account' })

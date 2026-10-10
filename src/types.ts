@@ -1,3 +1,6 @@
+// Version 1 could cache the duration of a truncated metadata prefix.
+export const TRACK_METADATA_VERSION = 2
+
 export interface DriveTrack {
   id: string
   name: string
@@ -12,6 +15,7 @@ export interface DriveTrack {
   unavailable?: boolean
   appManaged?: boolean
   metadataChecked?: boolean
+  metadataVersion?: number
   canRename?: boolean
   canTrash?: boolean
 }

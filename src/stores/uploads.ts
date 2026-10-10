@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { appError, type AppError, type DriveTrack, type UploadJob, isAudioFile } from '../types'
+import { appError, type AppError, type DriveTrack, type UploadJob, isAudioFile, TRACK_METADATA_VERSION } from '../types'
 import { generateDriveFileId } from '../services/drive'
 import { uploadFileResumable } from '../services/upload'
 import { getSessionGeneration, isSessionCurrent, subscribeSessionReset } from '../services/session'
@@ -158,7 +158,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
           try {
             const metadata = await readMetadataFromFile(job.file)
             if (!active()) continue
-            Object.assign(track, metadata, { metadataChecked: true })
+            Object.assign(track, metadata, { metadataChecked: true, metadataVersion: TRACK_METADATA_VERSION })
             update({ result: track })
           } catch { /* Missing/unsupported tags never invalidate a completed upload. */ }
           if (!active()) continue

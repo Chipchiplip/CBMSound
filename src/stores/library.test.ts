@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DriveTrack } from '../types'
+import { TRACK_METADATA_VERSION, type DriveTrack } from '../types'
 
 const mocks = vi.hoisted(() => ({
   auth: { getDriveIdentity: vi.fn(), getTokenState: vi.fn(), getReconnectScopes: vi.fn(), requestAccessToken: vi.fn(), invalidateAccessToken: vi.fn(), signOut: vi.fn() },
@@ -55,12 +55,51 @@ describe('full library snapshots', () => {
   })
 
   it('invalidates extracted metadata only when the file content metadata changed', () => {
-    const tagged = track('a', { artist: 'Artist', duration: 120, artwork: 'data:image/test', metadataChecked: true })
+    const tagged = track('a', { artist: 'Artist', duration: 120, artwork: 'data:image/test', metadataChecked: true, metadataVersion: TRACK_METADATA_VERSION })
     expect(reconcileSnapshot([track('a')], [tagged])[0]).toMatchObject({ artist: 'Artist', metadataChecked: true })
     const changed = reconcileSnapshot([track('a', { modifiedTime: '2026-02-02' })], [tagged])[0]
     expect(changed.artist).toBeUndefined()
     expect(changed.artwork).toBeUndefined()
     expect(changed.metadataChecked).toBeUndefined()
+  })
+
+  it('discards legacy prefix durations without losing artist, artwork or library files', async () => {
+    const legacy = track('a', { artist: 'Artist', duration: 104, artwork: 'data:image/test', metadataChecked: true })
+    const reconciled = reconcileSnapshot([track('a')], [legacy])[0]
+    expect(reconciled).toMatchObject({ id: 'a', artist: 'Artist', artwork: 'data:image/test' })
+    expect(reconciled.duration).toBeUndefined()
+    expect(reconciled.metadataChecked).toBeUndefined()
+    mocks.cache.getCachedSnapshot.mockResolvedValue({ tracks: [legacy], syncedAt: '2026-01-01' })
+    mocks.drive.listTracks.mockRejectedValue(new Error('offline'))
+    await useLibraryStore.getState().connect()
+    expect(useLibraryStore.getState().tracks[0].duration).toBeUndefined()
+    expect(useLibraryStore.getState().tracks[0].artist).toBe('Artist')
+  })
+
+  it('caches duration and tags for existing audio without granting Drive management rights', async () => {
+    const external = track('existing', { appManaged: false })
+    useLibraryStore.setState({ user, folder, tracks: [external], lastSynced: '2026-01-01' })
+    await useLibraryStore.getState().addTrack({ ...external, duration: 4800, metadataVersion: TRACK_METADATA_VERSION })
+    expect(useLibraryStore.getState().tracks[0]).toMatchObject({ duration: 4800, appManaged: false })
+    expect(mocks.cache.setCachedTracks).toHaveBeenCalled()
+    expect(mocks.drive.renameTrack).not.toHaveBeenCalled()
+    expect(mocks.drive.trashTrack).not.toHaveBeenCalled()
+    await useLibraryStore.getState().addTrack(track('outside', { appManaged: false }))
+    expect(useLibraryStore.getState().tracks.map((item) => item.id)).toEqual(['existing'])
+  })
+
+  it('finishes the full Drive sync when playback enriches a cached song in the meantime', async () => {
+    const external = track('existing', { appManaged: false })
+    let finishListing!: (tracks: DriveTrack[]) => void
+    mocks.cache.getCachedSnapshot.mockResolvedValue({ tracks: [external], syncedAt: '2026-01-01' })
+    mocks.drive.listTracks.mockImplementationOnce(() => new Promise((resolve) => { finishListing = resolve }))
+    const connecting = useLibraryStore.getState().connect()
+    await vi.waitFor(() => expect(mocks.drive.listTracks).toHaveBeenCalled())
+    await useLibraryStore.getState().addTrack({ ...external, duration: 4800, metadataVersion: TRACK_METADATA_VERSION })
+    finishListing([external])
+    await connecting
+    expect(useLibraryStore.getState()).toMatchObject({ status: 'ready', cacheSource: 'remote', busy: false })
+    expect(useLibraryStore.getState().tracks[0]).toMatchObject({ duration: 4800, metadataVersion: TRACK_METADATA_VERSION, appManaged: false })
   })
 
   it('keeps missing managed and external audio as playlist markers', async () => {

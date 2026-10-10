@@ -45,20 +45,25 @@ export async function readMetadataFromDrive(track: DriveTrack, signal?: AbortSig
     const buffer = new Uint8Array(chunks.reduce((sum, item) => sum + item.byteLength, 0))
     let offset = 0
     for (const chunk of chunks) { buffer.set(chunk, offset); offset += chunk.byteLength }
-    return parseTags(await parseBuffer(buffer, {
+    const metadata = await parseBuffer(buffer, {
       mimeType: track.mimeType,
       size: track.size,
-    }))
+    })
+    // parseBuffer's tokenizer uses buffer.length as its file size, even when a
+    // different size is supplied above. For CBR MP3 this makes a 4 MiB prefix
+    // look like a complete ~1:44 recording. Preserve tags from the prefix, but
+    // only expose duration when we actually received the complete Drive file.
+    return parseTags(metadata, buffer.byteLength === track.size)
   } catch {
     return {}
   }
 }
 
-async function parseTags(metadata: Awaited<ReturnType<typeof parseBlob>>): Promise<MusicTags> {
+async function parseTags(metadata: Awaited<ReturnType<typeof parseBlob>>, completeFile = true): Promise<MusicTags> {
   return {
     artist: metadata.common.artist,
     album: metadata.common.album,
-    duration: metadata.format.duration,
+    ...(completeFile ? { duration: metadata.format.duration } : {}),
     artwork: metadata.common.picture?.[0] ? await pictureToDataUrl(metadata.common.picture[0]) : undefined,
   }
 }

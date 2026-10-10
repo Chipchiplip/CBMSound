@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { appError, isSupportedAudio, type AppError, type DriveTrack, type LibraryMember, type PlayerState } from '../types'
+import { appError, isSupportedAudio, TRACK_METADATA_VERSION, type AppError, type DriveTrack, type LibraryMember, type PlayerState } from '../types'
 import * as drive from '../services/drive'
 import { DRIVE_FILE_SCOPE, getDriveIdentity, getReconnectScopes, getTokenState, requestAccessToken, signOut, type TokenState } from '../services/auth'
 import { getRememberedAccount, rememberAccount } from '../services/rememberedAccount'
@@ -156,7 +156,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
           // Existing audio in the configured root is listenable. A missing app
           // marker in legacy cache is not evidence of app ownership: keep it
           // explicitly read-only until the next full Drive snapshot says otherwise.
-          const tracks = cached.tracks.filter(isSupportedAudio).map((track) => ({ ...track, appManaged: track.appManaged === true }))
+          const tracks = cached.tracks.filter(isSupportedAudio).map((track) => ({ ...upgradeTrackMetadata(track), appManaged: track.appManaged === true }))
           set({ tracks, lastSynced: cached.syncedAt, cacheSource: 'cache' })
           setMediaManifest(tracks)
         }
@@ -364,9 +364,14 @@ export const useLibraryStore = create<LibraryState>((set, get) => {
 
     addTrack: async (track) => {
       const { user, folder, lastSynced } = get()
-      if (!user?.permissionId || !folder || !track.appManaged) return
+      // Listening to existing audio may enrich its local metadata too. This
+      // writes only the browser cache; it never adopts or modifies a Drive file.
+      const existing = get().tracks.find((item) => item.id === track.id && item.modifiedTime === track.modifiedTime)
+      if (!user?.permissionId || !folder || !track.appManaged && !existing) return
       const generation = getSessionGeneration()
-      syncSequence += 1
+      // Existing-track tag/duration updates are merged by reconcileSnapshot;
+      // they must not cancel an in-flight authoritative Drive sync.
+      if (!existing) syncSequence += 1
       const tracks = [track, ...get().tracks.filter((item) => item.id !== track.id)]
       set({ tracks })
       setMediaManifest(tracks)
@@ -424,14 +429,21 @@ subscribeSessionReset(() => {
   useLibraryStore.setState(emptyState())
 })
 
+function upgradeTrackMetadata(track: DriveTrack): DriveTrack {
+  return track.metadataVersion === TRACK_METADATA_VERSION ? track : {
+    ...track, duration: undefined, metadataChecked: undefined, metadataVersion: undefined,
+  }
+}
+
 export function reconcileSnapshot(remoteTracks: DriveTrack[], existingTracks: DriveTrack[]): DriveTrack[] {
   const existing = new Map(existingTracks.map((track) => [track.id, track]))
   const tracks = remoteTracks.map((track) => {
-    const local = existing.get(track.id)
+    const cached = existing.get(track.id)
+    const local = cached ? upgradeTrackMetadata(cached) : undefined
     const currentTrack = { ...track, appManaged: track.appManaged === true }
     return local && local.modifiedTime === track.modifiedTime ? {
       ...currentTrack, artist: local.artist, album: local.album, duration: local.duration,
-      artwork: local.artwork, metadataChecked: local.metadataChecked,
+      artwork: local.artwork, metadataChecked: local.metadataChecked, metadataVersion: local.metadataVersion,
     } : currentTrack
   })
   const remoteIds = new Set(remoteTracks.map((track) => track.id))

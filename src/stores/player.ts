@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { DriveTrack, PlayerState } from '../types'
+import { TRACK_METADATA_VERSION, type DriveTrack, type PlayerState } from '../types'
 import { clearMediaSession, fetchSmallFile, getFallbackLimit, mediaUrl, probeRangePlayback, releaseMediaRequests, setMediaManifest, subscribeMediaAuthRequired, subscribeMediaControllerChange } from '../services/media'
 import { readMetadataFromDrive } from '../services/audioMetadata'
 import { useLibraryStore } from './library'
@@ -34,6 +34,7 @@ let requestGeneration = 0
 let playbackAbort: AbortController | undefined
 let pendingSeek = 0
 let audioReady = false
+let streamDuration = 0
 let shuffleRemaining: string[] = []
 const metadataAttempts = new Set<string>()
 let memoryKey: string | undefined
@@ -67,6 +68,7 @@ function cancelPlaybackRequests(): void {
 function unloadAudio(): void {
   audio?.pause()
   audioReady = false
+  streamDuration = 0
   if (audio) { audio.removeAttribute('src'); audio.load() }
   if (blobUrl) URL.revokeObjectURL(blobUrl)
   blobUrl = undefined
@@ -174,7 +176,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     if (get().currentTrack && audio?.src && audioReady && !get().loading && !get().needsAuth && Number.isFinite(currentTime)) set({ currentTime: Math.max(0, currentTime) })
     updateMediaPosition()
   },
-  onDuration: (duration) => { if (Number.isFinite(duration) && duration > 0) set({ duration }); updateMediaPosition() },
+  onDuration: (duration) => {
+    if (audio?.src && get().currentTrack && Number.isFinite(duration) && duration > 0) {
+      streamDuration = duration
+      set({ duration })
+      if (audioReady) cacheStreamDuration()
+    }
+    updateMediaPosition()
+  },
   onEnded: () => get().next(true),
   stop: () => {
     savePlaybackCheckpoint(true, true)
@@ -205,7 +214,8 @@ async function startPlayback(track: DriveTrack, queue?: DriveTrack[], resumeAt =
   pendingSeek = resumeAt
   usePlayerStore.setState({
     currentTrack: track, queue: finalQueue, history: queue ? [] : state.history,
-    currentTime: resumeAt, duration: track.duration || 0, error: null, isPlaying: false, loading: true, needsAuth: false,
+    currentTime: resumeAt, duration: track.metadataVersion === TRACK_METADATA_VERSION ? track.duration || 0 : 0,
+    error: null, isPlaying: false, loading: true, needsAuth: false,
   })
   setMediaManifest(useLibraryStore.getState().tracks)
   updateMediaSession(track)
@@ -272,12 +282,14 @@ if (audio) {
   audio.addEventListener('timeupdate', () => usePlayerStore.getState().onTime(audio.currentTime))
   audio.addEventListener('durationchange', () => usePlayerStore.getState().onDuration(audio.duration))
   audio.addEventListener('loadedmetadata', () => {
-    if (Number.isFinite(audio.duration) && audio.duration > 0) {
-      const position = Math.min(pendingSeek, audio.duration)
-      if (position > 0) audio.currentTime = position
-      audioReady = true
-      usePlayerStore.setState({ duration: audio.duration, currentTime: position })
-    }
+    if (!audio.src || !usePlayerStore.getState().currentTrack) return
+    const knownDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0
+    const position = knownDuration ? Math.min(pendingSeek, knownDuration) : pendingSeek
+    if (position > 0) audio.currentTime = position
+    audioReady = true
+    if (knownDuration) streamDuration = knownDuration
+    usePlayerStore.setState({ duration: streamDuration || usePlayerStore.getState().duration, currentTime: position })
+    cacheStreamDuration()
     pendingSeek = 0
     updateMediaPosition()
   })
@@ -374,7 +386,9 @@ function restorePlaybackForLibrary(): void {
   const queue = saved.queueIds.map(availableTrack).filter((item): item is DriveTrack => Boolean(item))
   if (!queue.some((item) => item.id === track.id)) queue.unshift(track)
   shuffleRemaining = saved.shuffleRemaining.filter((id) => id !== track.id && queue.some((item) => item.id === id))
-  const duration = track.duration || saved.duration
+  // A checkpoint from an older build can contain the same truncated duration.
+  // Preserve its position, but re-read duration from the actual media source.
+  const duration = track.metadataVersion === TRACK_METADATA_VERSION ? track.duration || 0 : 0
   pendingSeek = Math.min(saved.currentTime, duration || saved.currentTime)
   if (audio) { audio.volume = saved.volume; audio.muted = saved.isMuted }
   usePlayerStore.setState({
@@ -439,15 +453,32 @@ function clearSystemMedia(): void {
 
 async function enrichTrack(track: DriveTrack, generation: number, session: number, signal: AbortSignal): Promise<void> {
   const key = `${track.id}:${track.modifiedTime}`
-  if (track.metadataChecked || metadataAttempts.has(key)) return
+  if (track.metadataChecked && track.metadataVersion === TRACK_METADATA_VERSION || metadataAttempts.has(key)) return
   metadataAttempts.add(key)
   const meta = await readMetadataFromDrive(track, signal)
   if (signal.aborted || !isSessionCurrent(session)) { metadataAttempts.delete(key); return }
   const latest = useLibraryStore.getState().tracks.find((item) => item.id === track.id)
   if (!latest || latest.unavailable || latest.modifiedTime !== track.modifiedTime) return
-  const next = { ...latest, ...meta, metadataChecked: true }
+  const nativeDuration = generation === requestGeneration && usePlayerStore.getState().currentTrack?.id === track.id ? streamDuration : 0
+  // Tag parsing may finish after loadedmetadata/durationchange. The media
+  // element's full-source duration must not be replaced by parser estimates.
+  const next = { ...latest, ...meta, metadataChecked: true, metadataVersion: TRACK_METADATA_VERSION,
+    duration: nativeDuration || meta.duration || (latest.metadataVersion === TRACK_METADATA_VERSION ? latest.duration : undefined),
+  }
   await useLibraryStore.getState().addTrack(next)
   if (signal.aborted || !isSessionCurrent(session) || generation !== requestGeneration || usePlayerStore.getState().currentTrack?.id !== track.id) return
-  usePlayerStore.setState({ currentTrack: next, duration: next.duration || usePlayerStore.getState().duration })
+  const duration = streamDuration || next.duration || usePlayerStore.getState().duration
+  usePlayerStore.setState({ currentTrack: { ...next, duration }, duration })
   updateMediaSession(next)
+}
+
+function cacheStreamDuration(): void {
+  const state = usePlayerStore.getState()
+  if (!audioReady || !streamDuration || !state.currentTrack) return
+  const latest = availableTrack(state.currentTrack.id)
+  if (!latest || latest.modifiedTime !== state.currentTrack.modifiedTime ||
+    latest.duration === streamDuration && latest.metadataVersion === TRACK_METADATA_VERSION) return
+  const next = { ...latest, duration: streamDuration, metadataVersion: TRACK_METADATA_VERSION }
+  usePlayerStore.setState({ currentTrack: next, queue: state.queue.map((track) => track.id === next.id ? next : track) })
+  void useLibraryStore.getState().addTrack(next).catch(() => { /* Optional metadata cache must not interrupt playback. */ })
 }
