@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0e110f" />
+    <meta name="description" content="CBM Sound là thư viện nhạc riêng trên Google Drive: nghe nhạc, tạo playlist và chia sẻ quyền nghe cho người được mời." />
+    <title>Giới thiệu CBM Sound</title>
+    <link rel="stylesheet" href="./legal.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./about.html" aria-label="CBM Sound — Giới thiệu">cbm<span>sound</span><i>.</i></a>
+      <a class="open-app" href="./">Mở ứng dụng <span aria-hidden="true">↗</span></a>
+    </header>
+    <main>
+      <p class="eyebrow">THƯ VIỆN NHẠC TRÊN GOOGLE DRIVE</p>
+      <h1>Âm nhạc, theo nhịp riêng.</h1>
+      <p class="lead">CBM Sound giúp bạn nghe và quản lý một thư viện nhạc riêng trên Google Drive ngay trong trình duyệt. Chủ thư viện tải nhạc lên; người được mời kết nối tài khoản Google để nghe.</p>
+      <div class="feature-list">
+        <section><h2>Lưu trên Drive, nghe trên web</h2><p>Tìm kiếm, sắp xếp và phát nhạc trong thư mục thư viện đã cấu hình, gồm cả nhạc có sẵn khi bạn cấp quyền đọc cần thiết. Có tua, hàng đợi, phát ngẫu nhiên và lặp bài.</p></section>
+        <section><h2>Quản lý thư viện chung</h2><p>Chủ thư viện có thể tải file âm thanh từ thiết bị lên Drive, đổi tên hoặc đưa nhạc tải qua ứng dụng vào thùng rác, mời và thu hồi quyền nghe của thành viên. Người nghe không có quyền quản lý.</p></section>
+        <section><h2>Không gian nghe của bạn</h2><p>Tạo playlist và xem lịch sử nghe. Những thông tin này lưu theo tài khoản trên thiết bị bạn đang dùng; hiện chưa đồng bộ playlist giữa các thiết bị.</p></section>
+      </div>
+      <section>
+        <h2>Vì sao cần quyền Google?</h2>
+        <p>Đăng nhập và cấp quyền cho phép CBM Sound xác định tài khoản, đọc thư viện và phát file riêng tư. Quyền <code>drive.file</code> dùng cho các file được cấp cho ứng dụng và nhạc do ứng dụng tạo.</p>
+        <p>Để nghe nhạc có sẵn hoặc nhạc được chia sẻ chưa thuộc phạm vi trên, bạn có thể chọn cấp thêm <code>drive.readonly</code>. Quyền này cho phép đọc và tải dữ liệu trên toàn Google Drive của tài khoản. CBM Sound chỉ truy vấn nhạc trong thư mục thư viện đã cấu hình. Ứng dụng thông báo điều này trước khi xin thêm quyền.</p>
+        <p>Quyền OAuth không thay thế quyền chia sẻ của Drive. Đăng nhập thành công chỉ mở được thư viện nếu tài khoản có quyền Drive đối với thư mục thư viện.</p>
+      </section>
+      <section>
+        <h2>Dữ liệu và khả năng hỗ trợ</h2>
+        <p>Giao diện được host trên GitHub Pages. Nhạc được tải trực tiếp giữa trình duyệt và Google Drive; ứng dụng không có máy chủ riêng để lưu thư viện nhạc. Khả năng phát phụ thuộc codec, trình duyệt, kết nối mạng và giới hạn của Drive. File lớn cần streaming hoạt động; chế độ tải rồi phát dự phòng chỉ hỗ trợ tối đa 32 MiB.</p>
+        <p>Đọc <a href="./privacy.html">chính sách quyền riêng tư</a> để biết dữ liệu được truy cập, lưu trên thiết bị và cách thu hồi quyền. <a href="./terms.html">Điều khoản sử dụng</a> mô tả trách nhiệm và các giới hạn của ứng dụng.</p>
+      </section>
+      <section>
+        <h2>Nhà vận hành và hỗ trợ</h2>
+        <p>CBM Sound được quản lý qua dự án <a href="https://github.com/Chipchiplip/CBMSound">Chipchiplip/CBMSound</a>. Bạn có thể <a href="https://github.com/Chipchiplip/CBMSound/issues">báo lỗi hoặc gửi câu hỏi tại GitHub Issues</a>. Không gửi access token, thông tin đăng nhập hoặc dữ liệu cá nhân trong báo cáo công khai.</p>
+      </section>
+      <a class="button" href="./">Bắt đầu với CBM Sound <span aria-hidden="true">↗</span></a>
+    </main>
+    <footer><span>CBM Sound</span><nav aria-label="Thông tin ứng dụng"><a aria-current="page" href="./about.html">Giới thiệu</a><a href="./privacy.html">Quyền riêng tư</a><a href="./terms.html">Điều khoản</a></nav></footer>
+  </body>
+</html>

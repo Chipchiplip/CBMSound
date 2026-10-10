@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0e110f" />
+    <meta name="description" content="Cách CBM Sound truy cập, sử dụng, lưu và chia sẻ dữ liệu tài khoản Google và thư viện nhạc." />
+    <title>Chính sách quyền riêng tư — CBM Sound</title>
+    <link rel="stylesheet" href="./legal.css" />
+  </head>
+  <body>
+    <header class="site-header"><a class="brand" href="./about.html" aria-label="CBM Sound — Giới thiệu">cbm<span>sound</span><i>.</i></a><a class="open-app" href="./">Mở ứng dụng <span aria-hidden="true">↗</span></a></header>
+    <main>
+      <p class="eyebrow">DỮ LIỆU CỦA BẠN</p>
+      <h1>Chính sách quyền riêng tư</h1>
+      <p class="updated">Cập nhật ngày 10 tháng 10 năm 2026</p>
+      <p class="lead">Chính sách này áp dụng cho website CBM Sound do dự án Chipchiplip/CBMSound vận hành. CBM Sound dùng Google Drive làm nơi lưu trữ nhạc và thực thi quyền truy cập; giao diện chạy trên GitHub Pages.</p>
+      <section>
+        <h2>1. Dữ liệu ứng dụng truy cập</h2>
+        <ul>
+          <li>Thông tin tài khoản do Google Drive trả về: tên hiển thị, email, mã định danh quyền của tài khoản và đường dẫn ảnh hồ sơ nếu có.</li>
+          <li>Thông tin thư mục thư viện và file âm thanh: ID, tên, MIME type, dung lượng, thời gian tạo/sửa, trạng thái file, quyền sở hữu và khả năng thực hiện thao tác.</li>
+          <li>Nội dung âm thanh để phát nhạc; tag nghệ sĩ, album, thời lượng và ảnh bìa nếu đọc được từ file.</li>
+          <li>Email, tên và thông tin quyền của thành viên khi chủ thư viện xem, thêm hoặc thu hồi quyền truy cập.</li>
+          <li>File bạn chọn từ thiết bị khi tải nhạc lên; playlist, các bài nghe gần đây và lựa chọn trong ứng dụng.</li>
+        </ul>
+        <p>Dữ liệu được dùng để xác minh tài khoản và quyền thao tác, hiển thị và đồng bộ thư viện, phát nhạc, lưu playlist/lịch sử trên thiết bị và thực hiện các thao tác quản lý mà bạn yêu cầu.</p>
+        <p>Khi trình duyệt hỗ trợ, tên bài, nghệ sĩ, album và ảnh bìa có thể hiển thị trong điều khiển media của trình duyệt/hệ điều hành hoặc màn hình khóa.</p>
+      </section>
+      <section>
+        <h2>2. Quyền Google Drive</h2>
+        <p><code>drive.file</code> cho phép truy cập các file được cấp cho ứng dụng và tạo, quản lý file của ứng dụng trong giới hạn quyền Drive của tài khoản.</p>
+        <p>Khi bạn chọn cấp thêm <code>drive.readonly</code>, quyền OAuth cho phép đọc và tải dữ liệu trên <strong>toàn bộ Google Drive của tài khoản</strong>. CBM Sound chỉ lấy file âm thanh nằm trực tiếp trong thư mục thư viện đã cấu hình, cùng metadata và quyền cần thiết cho các tính năng hiển thị trong ứng dụng. Ứng dụng không quét toàn Drive hay thư mục con để lập thư viện.</p>
+        <p>Bạn có thể từ chối quyền bổ sung. Khi đó ứng dụng có thể không tìm thấy hoặc phát được nhạc có sẵn chưa được cấp cho <code>drive.file</code>. Ứng dụng không xin quyền toàn quyền <code>drive</code>.</p>
+      </section>
+      <section>
+        <h2>3. Dữ liệu được lưu ở đâu và trong bao lâu?</h2>
+        <ul>
+          <li><strong>Google Drive:</strong> file âm thanh, metadata của file và quyền chia sẻ. File tồn tại cho đến khi người có quyền thay đổi hoặc xóa trên Drive. Lệnh xóa nhạc trong CBM Sound chuyển file vào thùng rác.</li>
+          <li><strong>localStorage:</strong> email, tên hiển thị, mã định danh quyền và danh sách scope đã cấp để ghi nhớ tài khoản theo OAuth Client ID. Thông tin này được xóa khi đăng xuất hoặc thu hồi quyền trong ứng dụng.</li>
+          <li><strong>IndexedDB:</strong> cache metadata thư viện, tag/ảnh bìa đã đọc, thời điểm đồng bộ, cấu hình thư mục, playlist và lịch sử theo tài khoản trên thiết bị. Dữ liệu này có thể tồn tại sau khi đăng xuất và cho đến khi bạn xóa dữ liệu website trong trình duyệt.</li>
+          <li><strong>Bộ nhớ phiên của trình duyệt:</strong> access token, phiên upload, thông tin hàng đợi và dữ liệu âm thanh tạm thời. Token chỉ ở RAM của trang và Service Worker, không được lưu vào localStorage, IndexedDB, URL hay log của ứng dụng. Ứng dụng không sử dụng Client Secret hoặc refresh token.</li>
+        </ul>
+        <p>Nhạc không được lưu làm dữ liệu lâu dài trong browser storage hay repository GitHub. Player dùng stream có xác thực; chế độ dự phòng có thể tải một file tối đa 32 MiB vào bộ nhớ tạm để phát. Ứng dụng chưa hỗ trợ nghe offline.</p>
+      </section>
+      <section>
+        <h2>4. Chia sẻ dữ liệu và dịch vụ liên quan</h2>
+        <p>File âm thanh được truyền trực tiếp giữa trình duyệt và Google Drive. Ứng dụng không có máy chủ riêng thu thập hoặc lưu bản sao thư viện nhạc. Chủ thư viện có thể yêu cầu cấp quyền nghe cho email cụ thể; Google Drive xử lý quyền chia sẻ và người được cấp quyền có thể nghe hoặc tải file theo quyền thực tế.</p>
+        <p>CBM Sound không tự đặt quyền chia sẻ <code>anyone</code>. Các quyền đã tồn tại trên Drive có thể vẫn cho phép người khác truy cập; chủ thư viện cần kiểm tra quyền chia sẻ trên Drive.</p>
+        <p>Trang ứng dụng tải Google Identity Services, Google Picker khi cần và font từ Google Fonts; gọi Google Drive API để thực hiện tính năng. Google và GitHub Pages có thể xử lý dữ liệu kết nối như địa chỉ IP và thông tin trình duyệt theo chính sách của họ. Xem <a href="https://policies.google.com/privacy">chính sách Google</a> và <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">chính sách GitHub</a>.</p>
+        <p>CBM Sound không tích hợp công cụ analytics hoặc quảng cáo; không bán dữ liệu Google, dùng dữ liệu đó cho quảng cáo hay chuyển dữ liệu đó để huấn luyện mô hình AI. Việc sử dụng và chuyển dữ liệu nhận từ Google APIs tuân theo <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, bao gồm các yêu cầu Limited Use; dữ liệu được dùng cho các tính năng mà bạn thấy và yêu cầu trong ứng dụng.</p>
+      </section>
+      <section>
+        <h2>5. Đăng xuất, thu hồi quyền và xóa dữ liệu</h2>
+        <ol>
+          <li><strong>Đăng xuất:</strong> vào Cài đặt → Đăng xuất để dừng phát, hủy các thao tác của phiên và xóa token cùng thông tin tài khoản ghi nhớ. Playlist và cache trên thiết bị vẫn được giữ; ứng dụng xác minh lại tài khoản trước khi hiển thị dữ liệu tương ứng.</li>
+          <li><strong>Thu hồi quyền Google:</strong> chọn thao tác thu hồi quyền trong Cài đặt hoặc xóa kết nối CBM Sound tại <a href="https://myaccount.google.com/connections">trang kết nối bên thứ ba của Tài khoản Google</a>. Việc này không tự xóa file trên Drive hay cache trên thiết bị.</li>
+          <li><strong>Xóa dữ liệu trên thiết bị:</strong> sau khi đăng xuất, dùng cài đặt trình duyệt để xóa dữ liệu website của <code>chipchiplip.github.io</code> (hoặc origin bạn đang dùng). Thao tác này xóa cache, playlist, lịch sử và có thể ảnh hưởng các website khác cùng origin.</li>
+          <li><strong>Xóa nhạc hoặc quyền thành viên:</strong> người có quyền quản lý thực hiện trên CBM Sound hoặc Google Drive. Để xóa hẳn file, quản lý thùng rác Drive; thu hồi quyền thư mục không xóa bản sao người nghe đã tải về hoặc các quyền trực tiếp khác trên file.</li>
+        </ol>
+      </section>
+      <section>
+        <h2>6. Liên hệ và thay đổi chính sách</h2>
+        <p>Nhà vận hành là dự án <a href="https://github.com/Chipchiplip/CBMSound">Chipchiplip/CBMSound</a>. Gửi câu hỏi qua <a href="https://github.com/Chipchiplip/CBMSound/issues">GitHub Issues</a> hoặc email hỗ trợ hiển thị trên màn hình cấp quyền Google. Không gửi token, file riêng tư hay dữ liệu cá nhân trong issue công khai.</p>
+        <p>Ngày cập nhật ở đầu trang giúp bạn nhận biết phiên bản chính sách. Nếu thay đổi cách sử dụng dữ liệu Google ngoài những mục đã công bố, ứng dụng cần cập nhật thông báo và xin sự đồng ý trước khi thực hiện cách sử dụng mới.</p>
+      </section>
+    </main>
+    <footer><span>CBM Sound</span><nav aria-label="Thông tin ứng dụng"><a href="./about.html">Giới thiệu</a><a aria-current="page" href="./privacy.html">Quyền riêng tư</a><a href="./terms.html">Điều khoản</a></nav></footer>
+  </body>
+</html>

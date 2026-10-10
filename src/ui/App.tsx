@@ -153,6 +153,7 @@ export function App() {
           {status !== 'error' && page === 'settings' && <SettingsPage />}
           {status !== 'error' && page === 'playlists' && <PlaylistsPage />}
           {status !== 'error' && page === 'recent' && <RecentPage />}
+          <PublicLinks />
         </main>
       </div>
       <PlayerBar />
@@ -177,12 +178,18 @@ function WelcomeScreen({ busy, configured, identityReady, identityError, onRetry
       <div className="privacy-note"><Shield size={16} /><span>Nhạc của bạn vẫn riêng tư. Chúng tôi không tải file nhạc lên website.</span></div>
       <button className="text-button" onClick={() => setOriginHint(!originHint)}><CircleHelp size={14} />Không mở được Google?</button>
       {originHint && <p className="origin-note">Chỉ dùng HTTPS hoặc localhost. Thêm đúng domain của website vào Authorized JavaScript origins trong Google Cloud.</p>}
+      <PublicLinks />
     </div>
     <div className="welcome-art"><div className="orbit orbit-one" /><div className="orbit orbit-two" /><div className="art-disc"><span className="disc-highlight" /><div className="disc-center"><AudioLines size={43} /></div></div><span className="float-note note-a"><Headphones size={16} /> Không gian của riêng bạn</span><span className="float-note note-b"><span className="online-dot" /> Riêng tư, luôn sẵn sàng</span><span className="art-label">EST. IN SOUND&nbsp;&nbsp; · &nbsp;&nbsp; VOL. 01</span></div>
   </div>
 }
 
 function GoogleG() { return <span className="google-g" aria-hidden="true">G</span> }
+
+function PublicLinks() {
+  const base = import.meta.env.BASE_URL
+  return <nav className="public-links" aria-label="Thông tin ứng dụng"><a href={`${base}about.html`}>Giới thiệu CBM Sound</a><a href={`${base}privacy.html`}>Quyền riêng tư</a><a href={`${base}terms.html`}>Điều khoản</a></nav>
+}
 
 function FolderPickerHint() {
   return <p className="fine-print">Hộp này chỉ chọn thư mục nên không hiển thị nhạc. Chọn dòng thư mục gốc một lần rồi bấm <strong>Chọn</strong>. Nếu đã mở vào bên trong, bấm <strong>Thư mục</strong> trên thanh phía trên để quay lại.</p>

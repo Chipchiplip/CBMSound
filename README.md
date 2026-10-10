@@ -44,6 +44,27 @@ VITE_ALLOW_LISTENER_READONLY_FALLBACK=true
 
 Tham khảo: [Google Picker](https://developers.google.com/workspace/drive/picker/guides/web-picker), [GIS token model](https://developers.google.com/identity/oauth2/web/guides/use-token-model), [scope Drive](https://developers.google.com/workspace/drive/api/guides/api-specific-auth), [xác minh OAuth khi mở rộng](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification).
 
+## Hoàn tất Branding và mở OAuth cho người nghe
+
+Các trang thông tin là HTML tĩnh, truy cập được khi chưa đăng nhập và không phụ thuộc Google Identity Services. Vite sao chép từ `public/` vào `dist`; đường dẫn tương đối hoạt động cả dưới `/` và `/CBMSound/`. Trang chào và giao diện thư viện có link đến các trang này.
+
+Điền trong Google Auth Platform → **Branding** của đúng project tạo OAuth Client:
+
+| Mục | Giá trị trên GitHub Pages hiện tại |
+| --- | --- |
+| Application home page | `https://chipchiplip.github.io/CBMSound/about.html` |
+| Application privacy policy link | `https://chipchiplip.github.io/CBMSound/privacy.html` |
+| Application terms of service link | `https://chipchiplip.github.io/CBMSound/terms.html` |
+| Authorized domains | `chipchiplip.github.io` (không có `https://` hoặc đường dẫn) |
+
+Điền tên **CBM Sound**, chọn email hỗ trợ mà nhà vận hành theo dõi và điền email liên hệ nhà phát triển. Logo có thể để trống. Nếu đổi domain hoặc cách xử lý dữ liệu, cập nhật các URL, thông báo và nội dung chính sách tương ứng. Kênh hỗ trợ công khai hiện là GitHub Issues của dự án; không đăng dữ liệu riêng tư lên issue.
+
+Lưu Branding rồi vào **Audience**: user type **External**, chọn **Publish app** để chuyển từ Testing sang In production khi Google cho phép. Nếu nút bị khóa, xử lý các mục Google báo chưa hoàn tất trong Branding. Khi còn Testing, chỉ tài khoản có tên trong **Test users** đăng nhập được; dùng đúng email đang gặp lỗi, chẳng hạn `hoangvyfa@gmail.com`. Quyền vào thư mục Drive vẫn phải được cấp riêng.
+
+**In production không đồng nghĩa đã xác minh.** Branding và Data Access có quy trình xác minh riêng. Nếu Google yêu cầu xác minh quyền sở hữu domain, thực hiện qua Google Search Console theo hướng dẫn trong console. Không có bước tự động vượt qua xác minh. Scope `drive.readonly` là restricted; mở rộng cho công chúng có thể cần xác minh scope ngoài Branding. Trường hợp sử dụng cá nhân/nhóm nhỏ có các ngoại lệ, nhưng cảnh báo và giới hạn người dùng chưa xác minh có thể vẫn áp dụng.
+
+Tham khảo: [Branding và yêu cầu trang công khai](https://support.google.com/cloud/answer/15549049?hl=en), [Audience và Publishing status](https://support.google.com/cloud/answer/15549945?hl=en), [scope Drive](https://developers.google.com/workspace/drive/api/guides/api-specific-auth), [xác minh restricted scope](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification).
+
 ## Ghi nhớ tài khoản và phiên Google
 
 Bấm tên hoặc avatar mở Cài đặt, giữ nguyên phiên và bài đang phát. **Đăng xuất** là thao tác riêng; **Đổi tài khoản** xóa phiên cũ, hủy request/upload/player rồi mở bộ chọn tài khoản Google.
