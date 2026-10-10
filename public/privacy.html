@@ -37,9 +37,9 @@
         <h2>3. Dữ liệu được lưu ở đâu và trong bao lâu?</h2>
         <ul>
           <li><strong>Google Drive:</strong> file âm thanh, metadata của file và quyền chia sẻ. File tồn tại cho đến khi người có quyền thay đổi hoặc xóa trên Drive. Lệnh xóa nhạc trong CBM Sound chuyển file vào thùng rác.</li>
-          <li><strong>localStorage:</strong> email, tên hiển thị, mã định danh quyền và danh sách scope đã cấp để ghi nhớ tài khoản theo OAuth Client ID. Thông tin này được xóa khi đăng xuất hoặc thu hồi quyền trong ứng dụng.</li>
+          <li><strong>localStorage:</strong> email, tên hiển thị, mã định danh quyền và danh sách scope đã cấp để ghi nhớ tài khoản theo OAuth Client ID; thông tin tài khoản ghi nhớ được xóa khi đăng xuất hoặc thu hồi quyền trong ứng dụng. ID bài nghe cuối, vị trí dừng, ID hàng đợi và tùy chọn phát được lưu riêng theo OAuth Client ID, tài khoản Drive và thư mục để tiếp tục lần nghe trước. Dữ liệu lần nghe còn lại sau đăng xuất, chỉ khôi phục sau khi xác minh tài khoản và đồng bộ Drive, và tồn tại cho đến khi bạn xóa dữ liệu website trong trình duyệt.</li>
           <li><strong>IndexedDB:</strong> cache metadata thư viện, tag/ảnh bìa đã đọc, thời điểm đồng bộ, cấu hình thư mục, playlist và lịch sử theo tài khoản trên thiết bị. Dữ liệu này có thể tồn tại sau khi đăng xuất và cho đến khi bạn xóa dữ liệu website trong trình duyệt.</li>
-          <li><strong>Bộ nhớ phiên của trình duyệt:</strong> access token, phiên upload, thông tin hàng đợi và dữ liệu âm thanh tạm thời. Token chỉ ở RAM của trang và Service Worker, không được lưu vào localStorage, IndexedDB, URL hay log của ứng dụng. Ứng dụng không sử dụng Client Secret hoặc refresh token.</li>
+          <li><strong>Bộ nhớ phiên của trình duyệt:</strong> access token, phiên upload, metadata hàng đợi đang mở và dữ liệu âm thanh tạm thời. Token chỉ ở RAM của trang và Service Worker, không được lưu vào localStorage, IndexedDB, URL hay log của ứng dụng. Ứng dụng không sử dụng Client Secret hoặc refresh token.</li>
         </ul>
         <p>Nhạc không được lưu làm dữ liệu lâu dài trong browser storage hay repository GitHub. Player dùng stream có xác thực; chế độ dự phòng có thể tải một file tối đa 32 MiB vào bộ nhớ tạm để phát. Ứng dụng chưa hỗ trợ nghe offline.</p>
       </section>
@@ -53,9 +53,9 @@
       <section>
         <h2>5. Đăng xuất, thu hồi quyền và xóa dữ liệu</h2>
         <ol>
-          <li><strong>Đăng xuất:</strong> vào Cài đặt → Đăng xuất để dừng phát, hủy các thao tác của phiên và xóa token cùng thông tin tài khoản ghi nhớ. Playlist và cache trên thiết bị vẫn được giữ; ứng dụng xác minh lại tài khoản trước khi hiển thị dữ liệu tương ứng.</li>
+          <li><strong>Đăng xuất:</strong> vào Cài đặt → Đăng xuất để dừng phát, hủy các thao tác của phiên và xóa token cùng thông tin tài khoản ghi nhớ. Playlist, cache và vị trí lần nghe trên thiết bị vẫn được giữ; ứng dụng xác minh lại tài khoản trước khi hiển thị dữ liệu tương ứng.</li>
           <li><strong>Thu hồi quyền Google:</strong> chọn thao tác thu hồi quyền trong Cài đặt hoặc xóa kết nối CBM Sound tại <a href="https://myaccount.google.com/connections">trang kết nối bên thứ ba của Tài khoản Google</a>. Việc này không tự xóa file trên Drive hay cache trên thiết bị.</li>
-          <li><strong>Xóa dữ liệu trên thiết bị:</strong> sau khi đăng xuất, dùng cài đặt trình duyệt để xóa dữ liệu website của <code>chipchiplip.github.io</code> (hoặc origin bạn đang dùng). Thao tác này xóa cache, playlist, lịch sử và có thể ảnh hưởng các website khác cùng origin.</li>
+          <li><strong>Xóa dữ liệu trên thiết bị:</strong> sau khi đăng xuất, dùng cài đặt trình duyệt để xóa dữ liệu website của <code>chipchiplip.github.io</code> (hoặc origin bạn đang dùng). Thao tác này xóa cache, playlist, lịch sử, vị trí lần nghe và có thể ảnh hưởng các website khác cùng origin.</li>
           <li><strong>Xóa nhạc hoặc quyền thành viên:</strong> người có quyền quản lý thực hiện trên CBM Sound hoặc Google Drive. Để xóa hẳn file, quản lý thùng rác Drive; thu hồi quyền thư mục không xóa bản sao người nghe đã tải về hoặc các quyền trực tiếp khác trên file.</li>
         </ol>
       </section>

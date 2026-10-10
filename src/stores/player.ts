@@ -5,6 +5,7 @@ import { readMetadataFromDrive } from '../services/audioMetadata'
 import { useLibraryStore } from './library'
 import { getTokenState, subscribeToken } from '../services/auth'
 import { getSessionGeneration, isSessionCurrent, subscribeSessionReset } from '../services/session'
+import { clearPlaybackMemory, playbackMemoryKey, readPlaybackMemory, writePlaybackMemory } from '../services/playbackMemory'
 
 interface PlayerStore extends PlayerState {
   loading: boolean
@@ -32,8 +33,12 @@ let blobUrl: string | undefined
 let requestGeneration = 0
 let playbackAbort: AbortController | undefined
 let pendingSeek = 0
+let audioReady = false
 let shuffleRemaining: string[] = []
 const metadataAttempts = new Set<string>()
+let memoryKey: string | undefined
+let restoredMemoryKey: string | undefined
+let lastCheckpointAt = 0
 
 function shuffled(ids: string[]): string[] {
   const result = [...ids]
@@ -61,6 +66,7 @@ function cancelPlaybackRequests(): void {
 
 function unloadAudio(): void {
   audio?.pause()
+  audioReady = false
   if (audio) { audio.removeAttribute('src'); audio.load() }
   if (blobUrl) URL.revokeObjectURL(blobUrl)
   blobUrl = undefined
@@ -83,6 +89,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     audio?.pause()
     set({ isPlaying: false, loading: false })
     updateMediaPosition()
+    savePlaybackCheckpoint(true, true)
   },
   toggle: () => {
     if (!audio || get().loading) return
@@ -137,12 +144,13 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
   seek: (seconds) => {
     if (!audio || !Number.isFinite(seconds)) return
-    const duration = Number.isFinite(audio.duration) ? audio.duration : get().duration
+    const duration = get().duration || (audio.src && Number.isFinite(audio.duration) ? audio.duration : 0)
     const currentTime = Math.max(0, Math.min(seconds, duration || seconds))
-    if (get().needsAuth) { pendingSeek = currentTime; set({ currentTime }); return }
-    audio.currentTime = currentTime
+    if (get().needsAuth || get().loading || !audio.src || !audioReady) pendingSeek = currentTime
+    else audio.currentTime = currentTime
     set({ currentTime })
     updateMediaPosition()
+    savePlaybackCheckpoint(true)
   },
   setVolume: (value) => {
     const volume = Math.min(1, Math.max(0, value))
@@ -157,15 +165,19 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
   toggleShuffle: () => {
     const shuffle = !get().shuffle
-    set({ shuffle })
     if (shuffle) resetShuffle(get().queue, get().currentTrack?.id)
     else shuffleRemaining = []
+    set({ shuffle })
   },
   cycleRepeat: () => set({ repeat: get().repeat === 'off' ? 'all' : get().repeat === 'all' ? 'one' : 'off' }),
-  onTime: (currentTime) => { if (!get().loading && !get().needsAuth) set({ currentTime }); updateMediaPosition() },
+  onTime: (currentTime) => {
+    if (get().currentTrack && audio?.src && audioReady && !get().loading && !get().needsAuth && Number.isFinite(currentTime)) set({ currentTime: Math.max(0, currentTime) })
+    updateMediaPosition()
+  },
   onDuration: (duration) => { if (Number.isFinite(duration) && duration > 0) set({ duration }); updateMediaPosition() },
   onEnded: () => get().next(true),
   stop: () => {
+    savePlaybackCheckpoint(true, true)
     cancelPlaybackRequests()
     unloadAudio()
     pendingSeek = 0
@@ -229,7 +241,7 @@ async function startPlayback(track: DriveTrack, queue?: DriveTrack[], resumeAt =
 async function resumeAudio(): Promise<void> {
   if (!audio || !usePlayerStore.getState().currentTrack) return
   if (!getTokenState()) { requireAuth(); return }
-  if (!audio.src) {
+  if (!audio.src || !audioReady) {
     const state = usePlayerStore.getState()
     await startPlayback(state.currentTrack!, undefined, state.currentTime)
     return
@@ -248,7 +260,7 @@ async function resumeAudio(): Promise<void> {
 function requireAuth(): void {
   const state = usePlayerStore.getState()
   if (!state.currentTrack) return
-  const currentTime = state.loading ? state.currentTime : audio?.currentTime || state.currentTime
+  const currentTime = state.loading || !audioReady ? state.currentTime : audio?.currentTime || state.currentTime
   cancelPlaybackRequests()
   audio?.pause()
   usePlayerStore.setState({ currentTime, isPlaying: false, loading: false, needsAuth: true, error: 'Phiên Google đã hết hạn. Kết nối lại để tiếp tục từ vị trí hiện tại.' })
@@ -260,13 +272,18 @@ if (audio) {
   audio.addEventListener('timeupdate', () => usePlayerStore.getState().onTime(audio.currentTime))
   audio.addEventListener('durationchange', () => usePlayerStore.getState().onDuration(audio.duration))
   audio.addEventListener('loadedmetadata', () => {
-    if (pendingSeek > 0 && Number.isFinite(audio.duration)) audio.currentTime = Math.min(pendingSeek, audio.duration)
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      const position = Math.min(pendingSeek, audio.duration)
+      if (position > 0) audio.currentTime = position
+      audioReady = true
+      usePlayerStore.setState({ duration: audio.duration, currentTime: position })
+    }
     pendingSeek = 0
     updateMediaPosition()
   })
   audio.addEventListener('ended', () => usePlayerStore.getState().onEnded())
   audio.addEventListener('play', () => { if (!usePlayerStore.getState().loading) usePlayerStore.setState({ isPlaying: true }); updateMediaPosition() })
-  audio.addEventListener('pause', () => { usePlayerStore.setState({ isPlaying: false }); updateMediaPosition() })
+  audio.addEventListener('pause', () => { usePlayerStore.setState({ isPlaying: false }); updateMediaPosition(); savePlaybackCheckpoint(true, true) })
   audio.addEventListener('error', () => {
     const state = usePlayerStore.getState()
     if (state.loading || state.needsAuth || !state.currentTrack) return
@@ -285,6 +302,95 @@ subscribeToken((token) => {
 })
 subscribeMediaAuthRequired(requireAuth)
 subscribeSessionReset(() => { usePlayerStore.getState().stop(); metadataAttempts.clear() })
+
+// Store IDs and playback preferences only. No media bytes or OAuth credentials
+// are persisted, and a saved selection never opens a stream automatically.
+function savePlaybackCheckpoint(force = false, readAudioPosition = false): void {
+  const state = usePlayerStore.getState()
+  if (!memoryKey || !state.currentTrack) return
+  const now = Date.now()
+  if (!force && now - lastCheckpointAt < 5_000) return
+  const position = readAudioPosition && audio?.src && audioReady && !state.loading && !state.needsAuth ? audio.currentTime : state.currentTime
+  const queueIds = [...new Set(state.queue.map((track) => track.id))].slice(0, 1_000)
+  if (!queueIds.includes(state.currentTrack.id)) {
+    if (queueIds.length === 1_000) queueIds.pop()
+    queueIds.push(state.currentTrack.id)
+  }
+  writePlaybackMemory(memoryKey, {
+    version: 1, trackId: state.currentTrack.id,
+    currentTime: Math.max(0, Number.isFinite(position) ? position : state.currentTime),
+    duration: state.duration, queueIds, history: state.history.slice(-100),
+    shuffleRemaining: shuffleRemaining.slice(0, 1_000),
+    volume: state.volume, isMuted: state.isMuted, repeat: state.repeat, shuffle: state.shuffle,
+  })
+  lastCheckpointAt = now
+}
+
+usePlayerStore.subscribe((state, previous) => {
+  const changed = state.currentTrack?.id !== previous.currentTrack?.id || state.queue !== previous.queue
+    || state.history !== previous.history || state.volume !== previous.volume || state.isMuted !== previous.isMuted
+    || state.repeat !== previous.repeat || state.shuffle !== previous.shuffle
+    || state.isPlaying !== previous.isPlaying || state.needsAuth !== previous.needsAuth
+    || state.loading !== previous.loading || state.duration !== previous.duration
+  savePlaybackCheckpoint(changed)
+})
+
+function restorePlaybackForLibrary(): void {
+  const library = useLibraryStore.getState()
+  const nextKey = library.user?.permissionId && library.folder?.folderId
+    ? playbackMemoryKey(library.user.permissionId, library.folder.folderId) : undefined
+  if (nextKey !== memoryKey) {
+    savePlaybackCheckpoint(true, true)
+    // Clear the previous account/folder before its playback can be observed in
+    // the new context. Keep its own checkpoint for a future verified login.
+    memoryKey = undefined
+    restoredMemoryKey = undefined
+    if (usePlayerStore.getState().currentTrack) usePlayerStore.getState().stop()
+    memoryKey = nextKey
+    lastCheckpointAt = 0
+  }
+  // A partial/failed sync or cached list cannot prove the saved file is gone.
+  if (!nextKey || library.status !== 'ready' || library.cacheSource !== 'remote' || !getTokenState()) return
+  const state = usePlayerStore.getState()
+  if (restoredMemoryKey === nextKey) {
+    if (state.currentTrack && !availableTrack(state.currentTrack.id)) {
+      state.stop()
+      clearPlaybackMemory(nextKey)
+      library.setNotice('Bài đang nghe không còn khả dụng trong thư viện Drive.')
+    }
+    return
+  }
+  restoredMemoryKey = nextKey
+  // A user may already be listening from the cache while a sync is retried.
+  if (state.currentTrack) { savePlaybackCheckpoint(true); return }
+  const saved = readPlaybackMemory(nextKey)
+  if (!saved) return
+  const track = availableTrack(saved.trackId)
+  if (!track) {
+    clearPlaybackMemory(nextKey)
+    library.setNotice('Bài nghe lần trước không còn khả dụng trong thư viện Drive.')
+    return
+  }
+  const queue = saved.queueIds.map(availableTrack).filter((item): item is DriveTrack => Boolean(item))
+  if (!queue.some((item) => item.id === track.id)) queue.unshift(track)
+  shuffleRemaining = saved.shuffleRemaining.filter((id) => id !== track.id && queue.some((item) => item.id === id))
+  const duration = track.duration || saved.duration
+  pendingSeek = Math.min(saved.currentTime, duration || saved.currentTime)
+  if (audio) { audio.volume = saved.volume; audio.muted = saved.isMuted }
+  usePlayerStore.setState({
+    currentTrack: track, queue, history: saved.history.filter((id) => availableTrack(id)),
+    currentTime: pendingSeek, duration, volume: saved.volume, isMuted: saved.isMuted,
+    repeat: saved.repeat, shuffle: saved.shuffle, isPlaying: false, loading: false, needsAuth: false, error: null,
+  })
+  updateMediaSession(track)
+}
+
+useLibraryStore.subscribe(restorePlaybackForLibrary)
+restorePlaybackForLibrary()
+if (typeof window !== 'undefined') window.addEventListener('pagehide', () => savePlaybackCheckpoint(true, true))
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') savePlaybackCheckpoint(true, true)
+})
 
 function updateMediaSession(track: DriveTrack): void {
   if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return

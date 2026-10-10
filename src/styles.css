@@ -37,3 +37,45 @@
 .existing-music-access > .fine-print { flex-basis: 100%; }
 .public-links{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:28px;padding-top:18px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}.public-links a:hover{color:var(--mint);text-decoration:underline;text-underline-offset:4px}.welcome-copy .public-links{max-width:460px}
 .remembered-account{display:flex;align-items:center;gap:10px;max-width:100%;margin:0 0 18px}.remembered-account>span:last-child{min-width:0}.remembered-account strong,.remembered-account small{display:block;overflow-wrap:anywhere}.remembered-account strong{font-size:13px}.remembered-account small{font-size:11px;color:var(--muted);margin-top:4px}.switch-account{display:flex;margin-top:12px}.connect-button{max-width:100%;overflow-wrap:anywhere;text-align:left}.connect-button .google-g,.connect-button>span:last-child{flex-shrink:0}
+
+/* Give the timeline its own touch target; errors sit above the entire player. */
+.app-shell { padding-bottom: 108px; }
+.sidebar { bottom: 100px; }
+.player-bar { height: 100px; padding-top: 10px; padding-bottom: 8px; }
+.player-center { max-width: 590px; min-width: 0; }
+.play-controls { margin-bottom: 0; }
+.play-controls button { min-width: 32px; min-height: 32px; }
+.play-controls .main-play { width: 36px; height: 36px; }
+.playback-timeline { display: grid; grid-template-columns: minmax(38px, auto) minmax(0, 1fr) minmax(38px, auto); gap: 10px; align-items: center; width: 100%; }
+.playback-timeline time { color: #a2aea5; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.timeline-elapsed { text-align: right; }
+.timeline-duration { text-align: left; }
+.playback-timeline.is-seeking .timeline-elapsed { color: #d9ebdd; }
+.timeline-range { appearance: none; display: block; min-width: 0; width: 100%; height: 44px; margin: 0; padding: 0; background: transparent; cursor: pointer; touch-action: none; border-radius: 6px; }
+.timeline-range::-webkit-slider-runnable-track { height: 6px; border-radius: 99px; background: linear-gradient(to right, var(--mint) 0 var(--timeline-progress), #46534b var(--timeline-progress) 100%); }
+.timeline-range::-moz-range-track { height: 6px; border-radius: 99px; background: linear-gradient(to right, var(--mint) 0 var(--timeline-progress), #46534b var(--timeline-progress) 100%); }
+.timeline-range::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; margin-top: -4px; border: 2px solid #ecf5ee; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 3px #121613; transition: box-shadow .15s; }
+.timeline-range::-moz-range-thumb { width: 10px; height: 10px; border: 2px solid #ecf5ee; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 3px #121613; transition: box-shadow .15s; }
+.timeline-range:hover::-webkit-slider-thumb, .timeline-range:focus-visible::-webkit-slider-thumb, .is-seeking .timeline-range::-webkit-slider-thumb { box-shadow: 0 0 0 5px #a4ccaa26; }
+.timeline-range:hover::-moz-range-thumb, .timeline-range:focus-visible::-moz-range-thumb, .is-seeking .timeline-range::-moz-range-thumb { box-shadow: 0 0 0 5px #a4ccaa26; }
+.timeline-range:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+.timeline-range:disabled { opacity: .4; cursor: default; }
+.player-error { position: fixed; inset: auto auto 112px 50%; transform: translateX(-50%); width: max-content; max-width: min(640px, calc(100vw - 24px)); padding: 10px 12px; font-size: 12px; line-height: 1.5; white-space: normal; overflow: visible; box-shadow: 0 6px 24px #0005; }
+.player-error > span { min-width: 0; overflow-wrap: anywhere; }
+.player-error > button { flex-shrink: 0; min-height: 32px; padding: 4px 6px; border: 0; border-radius: 4px; color: #f0c7bf; background: transparent; }
+.player-error > button:hover { background: #ffffff0c; }
+.queue-panel { bottom: 112px; }
+@media (max-width: 760px) {
+  .app-shell { padding-bottom: 183px; }
+  .sidebar { bottom: 116px; }
+  .player-bar { height: 116px; padding: 8px 12px; grid-template-columns: minmax(0, 1fr) auto 32px; grid-template-rows: 48px 44px; gap: 4px 8px; }
+  .player-center { display: contents; }
+  .play-controls { grid-column: 2; grid-row: 1; margin: 0; gap: 7px; }
+  .play-controls .main-play { width: 36px; height: 36px; }
+  .playback-timeline { grid-column: 1 / -1; grid-row: 2; gap: 10px; }
+  .playback-timeline time { font-size: 11px; }
+  .player-right { position: static; grid-column: 3; grid-row: 1; justify-content: center; }
+  .player-right .queue-toggle { width: 32px; min-height: 44px; padding: 0; }
+  .player-error { bottom: 188px; left: 12px !important; right: 12px; width: auto; max-width: none; transform: none; }
+  .queue-panel { bottom: 188px; max-height: calc(100dvh - 200px); }
+}

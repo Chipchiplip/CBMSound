@@ -75,6 +75,14 @@ Trong một phiên, điều hướng hoặc bấm Kết nối lại không xin t
 
 Token hết hạn/HTTP 401 giữ thông tin ghi nhớ và vị trí phát để kết nối lại. Đăng xuất hoặc thu hồi quyền xóa tài khoản ghi nhớ và token RAM ở trang/Service Worker; playlist và cache vẫn được phân vùng theo tài khoản và không hiển thị trước khi xác minh lại. Không chia sẻ phiên tự động giữa các tab.
 
+## Thanh tua và tiếp tục lần nghe trước
+
+Thanh tua hiện vị trí đang kéo và chỉ gửi lệnh tua khi thả chuột/ngón tay hoặc thả phím điều hướng. Có thể dùng phím mũi tên, Home và End khi thanh tua được focus. Thông báo lỗi nằm phía trên player để không che thanh tua.
+
+Ứng dụng lưu ID bài nghe cuối, vị trí phát, ID hàng đợi và các tùy chọn phát vào localStorage, tách theo OAuth Client ID, tài khoản Drive đã xác minh và thư mục. Vị trí được cập nhật tối đa mỗi 5 giây trong khi phát; tạm dừng, tua, ẩn/đóng trang và đăng xuất lưu ngay vị trí hiện tại. Không lưu token hay dữ liệu âm thanh. Dữ liệu còn lại sau đăng xuất và được xóa khi xóa dữ liệu website trong trình duyệt; trình duyệt chặn storage sẽ không ghi nhớ được.
+
+Sau khi đăng nhập và đồng bộ đầy đủ từ Drive, player khôi phục bài còn khả dụng và vị trí dừng ở trạng thái tạm dừng. Bấm Phát để tiếp tục; không tự tải/phát nhạc khi mở trang. Bài đã bị xóa hoặc mất quyền được loại khỏi lần nghe đã lưu. Dữ liệu này chỉ nằm trên trình duyệt/thiết bị đang dùng, không đồng bộ giữa các thiết bị.
+
 ## Thư viện và thành viên
 
 - Liệt kê file âm thanh con trực tiếp trong thư mục gốc, không trong thùng rác, gồm cả nhạc có sẵn. Không quét thư mục con, tài liệu Google hay shortcut. `properties.cbmSoundTrack=1` chỉ xác định file upload qua CBM Sound để cho phép quản lý; file cũ không có dấu được nghe, tìm kiếm và thêm vào playlist nhưng không đổi tên/xóa bằng app. Không tự ghi dấu, sao chép, sửa metadata hay quyền của file cũ.
